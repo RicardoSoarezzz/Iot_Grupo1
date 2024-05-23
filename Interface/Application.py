@@ -14,16 +14,15 @@ ALARM_BG_COLOR_ON = "darkred"
 ALARM_BG_COLOR_OFF = "gray"
 
 # Application setup
-SCRIPT_PATH = os.path.dirname(__file__)
-RESOURCES_DIR = os.path.join(SCRIPT_PATH, "../2/resources")
 APPLICATION_NAME = "Internet das Coisas - Grupo 1"
 
 # MQTT setup
-MQTT_SERVER = "192.168.0.101"
+MQTT_SERVER = "192.168.0.101"  # Replace with your MQTT server's IP address
 MQTT_PORT = 1883
 TOPIC = "/IoT_Grupo1/commands"
 
-client = mqtt.Client()
+# Create MQTT client with explicit protocol version to avoid deprecation warning
+client = mqtt.Client(protocol=mqtt.MQTTv311)
 client.connect(MQTT_SERVER, MQTT_PORT, 60)
 
 def on_connect(client, userdata, flags, rc):
