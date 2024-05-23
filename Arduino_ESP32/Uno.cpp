@@ -1,12 +1,15 @@
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include <PubSubClient.h>
+#include <SPI.h>
 #include <Ethernet.h>
+#include <PubSubClient.h>
+#include <Wire.h>
 
 // Network settings for Ethernet
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress mqtt_server(192, 168, 0, 101); // IP address of your MQTT broker
 #define mqtt_port 1883
+
+EthernetClient ethClient;
+PubSubClient client(ethClient);
 
 EthernetClient ethClient;
 PubSubClient client(ethClient);

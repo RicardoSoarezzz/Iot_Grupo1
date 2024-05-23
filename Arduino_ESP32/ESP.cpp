@@ -1,14 +1,16 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <Wire.h>
 
+// WiFi settings
 const char* ssid = "DuckNet";
 const char* password = "DuckieUPT";
-const char* mqtt_server = "192.168.0.101";
-#define mqtt_port 1883
-#define TOPIC "/IoT_Grupo1"
 
-WiFiClient wifiClient;
-PubSubClient mqttClient(wifiClient);
+const char* mqtt_server = "192.168.0.101"; // IP address of your MQTT broker
+#define mqtt_port 1883
+
+WiFiClient espClient;
+PubSubClient client(espClient);
 
 void setup_wifi() {
     delay(10);

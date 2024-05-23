@@ -1,6 +1,6 @@
 import tkinter as tk
-import ttkbootstrap as ttk
-import os
+from tkinter import ttk
+
 import paho.mqtt.client as mqtt
 
 # Colors
@@ -17,13 +17,12 @@ ALARM_BG_COLOR_OFF = "gray"
 APPLICATION_NAME = "Internet das Coisas - Grupo 1"
 
 # MQTT setup
-MQTT_SERVER = "192.168.0.101"  # Replace with your MQTT server's IP address
+MQTT_SERVER = "192.168.1.142"  # Replace with your MQTT server's IP address
 MQTT_PORT = 1883
 TOPIC = "/IoT_Grupo1/commands"
 
-# Create MQTT client with explicit protocol version to avoid deprecation warning
-client = mqtt.Client(protocol=mqtt.MQTTv311)
-client.connect(MQTT_SERVER, MQTT_PORT, 60)
+# MQTT client setup
+client = mqtt.Client()
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
@@ -34,6 +33,8 @@ def on_message(client, userdata, msg):
 
 client.on_connect = on_connect
 client.on_message = on_message
+
+client.connect(MQTT_SERVER, MQTT_PORT, 60)
 client.loop_start()
 
 # Functions
@@ -83,33 +84,33 @@ def ring_buzzer():
     root.after(5000, lambda: client.publish(TOPIC, "BUZZER_OFF"))
 
 # Root window setup
-root = ttk.Window(themename="yeti")
+root = tk.Tk()  # Altere de ttk.Window para tk.Tk()
 root.title(APPLICATION_NAME)
 root.geometry("800x350")
-root.iconbitmap("")
+# root.iconbitmap("")  # Adicione o caminho para o ícone, se necessário
 
 # Lights
 lights_frame = tk.Frame(root, width=400, height=120)
 lights_frame.grid(row=0, column=0, padx=10, pady=10, sticky="n")
 
-lights_canvas = ttk.Canvas(lights_frame, width=400, height=125)
+lights_canvas = tk.Canvas(lights_frame, width=400, height=125)
 lights_canvas.grid(row=0, column=0, padx=(10, 0))
 
 multi_light = lights_canvas.create_oval(50, 5, 170, 120, fill=RED_LIGHT_COLOR, outline="black", width=1)
 noise_led = lights_canvas.create_oval(230, 5, 350, 120, fill="black", outline="black", width=1)
 
 # Buttons
-buttons_frame = ttk.Frame(root, width=400, height=100)
+buttons_frame = tk.Frame(root, width=400, height=100)
 buttons_frame.grid(row=1, column=0, padx=10, pady=10, sticky="n")
 
-ttk.Button(buttons_frame, text="Ring Buzzer", command=ring_buzzer, padding=10, bootstyle="danger").grid(row=0, column=0, padx=(0, 5))
-ttk.Button(buttons_frame, text="NOISE", command=toggle_noise, padding=10, bootstyle="warning").grid(row=0, column=1, padx=(5, 0))
+tk.Button(buttons_frame, text="Ring Buzzer", command=ring_buzzer, padx=10, pady=5, bg="red", fg="white").grid(row=0, column=0, padx=(0, 5))
+tk.Button(buttons_frame, text="NOISE", command=toggle_noise, padx=10, pady=5, bg="yellow", fg="black").grid(row=0, column=1, padx=(5, 0))
 
 # Alarm
-alarm_frame = ttk.Frame(root, width=400, height=100)
+alarm_frame = tk.Frame(root, width=400, height=100)
 alarm_frame.grid(row=2, column=0, padx=10, pady=10, sticky="n")
 
-alarm_canvas = ttk.Canvas(alarm_frame, width=400, height=100)
+alarm_canvas = tk.Canvas(alarm_frame, width=400, height=100)
 alarm_canvas.grid(row=0, column=0)
 
 alarm_background = alarm_canvas.create_rectangle(80, 20, 320, 70, fill=ALARM_BG_COLOR_OFF)
@@ -117,13 +118,13 @@ alarm_message = alarm_canvas.create_text(200, 45, text="ALARM", font=("Digital-7
 alarm_canvas.tag_lower(alarm_background, alarm_message)
 
 # Temperature
-temperature_frame = ttk.Frame(root, width=400, height=400)
+temperature_frame = tk.Frame(root, width=400, height=400)
 temperature_frame.grid(row=0, column=1, rowspan=3, padx=10, pady=10, sticky="n")
 
-thermometer_frame = ttk.Frame(temperature_frame)
+thermometer_frame = tk.Frame(temperature_frame)
 thermometer_frame.grid(row=0, column=0, pady=10)
 
-temperature_label = ttk.Label(thermometer_frame, text="25 °C", font=("Digital-7", 48), bootstyle="info", width=5)
+temperature_label = tk.Label(thermometer_frame, text="25 °C", font=("Digital-7", 48), bg="blue", fg="white", width=5)
 temperature_label.grid(row=0, column=0, pady=20)
 
 slider = tk.Scale(temperature_frame, from_=0, to=80, orient=tk.HORIZONTAL, command=update_thermometer, length=300)
