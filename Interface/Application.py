@@ -1,6 +1,7 @@
 import tkinter as tk
 import ttkbootstrap as ttk
 import os
+import paho.mqtt.client as mqtt
 
 # Colors
 RED_LIGHT_COLOR = "red"
@@ -17,6 +18,25 @@ SCRIPT_PATH = os.path.dirname(__file__)
 RESOURCES_DIR = os.path.join(SCRIPT_PATH, "../2/resources")
 APPLICATION_NAME = "Internet das Coisas - Grupo 1"
 
+# MQTT setup
+MQTT_SERVER = "192.168.0.101"
+MQTT_PORT = 1883
+TOPIC = "/IoT_Grupo1/commands"
+
+client = mqtt.Client()
+client.connect(MQTT_SERVER, MQTT_PORT, 60)
+
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code " + str(rc))
+    client.subscribe(TOPIC)
+
+def on_message(client, userdata, msg):
+    print(msg.topic + " " + str(msg.payload))
+
+client.on_connect = on_connect
+client.on_message = on_message
+client.loop_start()
+
 # Functions
 def update_thermometer(value):
     temperature_label.config(text=f"{value} °C")
@@ -28,12 +48,14 @@ def update_thermometer(value):
     else:
         light_color = BLUE_LIGHT_COLOR
     lights_canvas.itemconfig(multi_light, fill=light_color)
+    client.publish(TOPIC, f"TEMP:{value}")
 
 def toggle_noise():
     global noise_state
     noise_state = not noise_state
     if noise_state:
         lights_canvas.itemconfig(noise_led, fill=YELLOW_LIGHT_COLOR)
+        client.publish(TOPIC, "TOGGLE_NOISE")
     else:
         lights_canvas.itemconfig(noise_led, fill="black")
 
@@ -52,13 +74,14 @@ def blink_alarm():
         blink_counter += 1
         root.after(500, blink_alarm)
     else:
-        # Reset to initial state after blinking
         alarm_canvas.itemconfig(alarm_message, fill=ALARM_TEXT_COLOR_OFF)
         alarm_canvas.itemconfig(alarm_background, fill=ALARM_BG_COLOR_OFF)
         blink_counter = 0
 
 def ring_buzzer():
     blink_alarm()
+    client.publish(TOPIC, "BUZZER_ON")
+    root.after(5000, lambda: client.publish(TOPIC, "BUZZER_OFF"))
 
 # Root window setup
 root = ttk.Window(themename="yeti")
@@ -70,11 +93,11 @@ root.iconbitmap("")
 lights_frame = tk.Frame(root, width=400, height=120)
 lights_frame.grid(row=0, column=0, padx=10, pady=10, sticky="n")
 
-lights_canvas = ttk.Canvas(lights_frame, width=400, height=125)  # Adjust width to accommodate both ovals
+lights_canvas = ttk.Canvas(lights_frame, width=400, height=125)
 lights_canvas.grid(row=0, column=0, padx=(10, 0))
 
 multi_light = lights_canvas.create_oval(50, 5, 170, 120, fill=RED_LIGHT_COLOR, outline="black", width=1)
-noise_led = lights_canvas.create_oval(230, 5, 350, 120, fill="black", outline="black", width=1)  # Adjust coordinates for the Noise LED
+noise_led = lights_canvas.create_oval(230, 5, 350, 120, fill="black", outline="black", width=1)
 
 # Buttons
 buttons_frame = ttk.Frame(root, width=400, height=100)
@@ -104,11 +127,9 @@ thermometer_frame.grid(row=0, column=0, pady=10)
 temperature_label = ttk.Label(thermometer_frame, text="25 °C", font=("Digital-7", 48), bootstyle="info", width=5)
 temperature_label.grid(row=0, column=0, pady=20)
 
-# Slider to simulate temperature change
 slider = tk.Scale(temperature_frame, from_=0, to=80, orient=tk.HORIZONTAL, command=update_thermometer, length=300)
 slider.grid(row=1, column=0, pady=20)
 
-# Initial state of noise
 noise_state = False
 
 root.mainloop()
