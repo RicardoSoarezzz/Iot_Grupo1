@@ -46,6 +46,10 @@ void loop() {
 
     updateDisplayAndLED(temperature, digitalValue);
     delay(1000);
+
+    // Send sensor data to ESP32
+    String sensorData = "Temperature: " + String(temperature) + " C, Noise: " + (digitalValue == HIGH ? "High" : "Low");
+    Serial.println(sensorData);
 }
 
 void readButton() {
