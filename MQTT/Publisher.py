@@ -22,7 +22,7 @@ client.loop_start()
 
 try:
     while True:
-        client.publish("test/topic", "Hello MQTT")
+        client.publish("/IoT_Grupo1/commands", "Hello MQTT")
         print("Message Published")
         time.sleep(5)
 except KeyboardInterrupt:

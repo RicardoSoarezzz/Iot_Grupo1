@@ -1,6 +1,5 @@
 import tkinter as tk
 import ttkbootstrap as ttk
-import os
 import paho.mqtt.client as mqtt
 
 # Colors
@@ -19,28 +18,35 @@ APPLICATION_NAME = "Internet das Coisas - Grupo 1"
 # MQTT setup
 MQTT_SERVER = "192.168.0.101"  # Replace with your MQTT server's IP address
 MQTT_PORT = 1883
-TOPIC = "/IoT_Grupo1/commands"
+TOPIC = "/ic/Grupo1"
 
-# Create MQTT client with explicit protocol version to avoid deprecation warning
-client = mqtt.Client(protocol=mqtt.MQTTv311)
-client.connect(MQTT_SERVER, MQTT_PORT, 60)
+# Create MQTT client
+client = mqtt.Client()
 
 def on_connect(client, userdata, flags, rc):
-    print("Connected with result code " + str(rc))
-    client.subscribe(TOPIC)
+    if rc == 0:
+        print("Connected successfully")
+        client.subscribe(TOPIC)
+    else:
+        print(f"Failed to connect, return code {rc}")
 
 def on_message(client, userdata, msg):
     print(msg.topic + " " + str(msg.payload))
 
 client.on_connect = on_connect
 client.on_message = on_message
-client.loop_start()
+
+try:
+    client.connect(MQTT_SERVER, MQTT_PORT, 60)
+    client.loop_start()
+except Exception as e:
+    print(f"Failed to connect to MQTT server: {e}")
 
 # Functions
 def update_thermometer(value):
     temperature_label.config(text=f"{value} °C")
     value = int(value)
-    if value < 10:
+    if value < 10:\
         light_color = RED_LIGHT_COLOR
     elif 10 <= value <= 30:
         light_color = GREEN_LIGHT_COLOR
@@ -86,7 +92,7 @@ def ring_buzzer():
 root = ttk.Window(themename="yeti")
 root.title(APPLICATION_NAME)
 root.geometry("800x350")
-root.iconbitmap("")
+root.iconbitmap("")  # Specify an icon file path if needed
 
 # Lights
 lights_frame = tk.Frame(root, width=400, height=120)

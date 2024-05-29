@@ -8,7 +8,7 @@ client = mqtt.Client(client_id="TestSubscriber")
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connected to broker")
-        client.subscribe("test/topic")
+        client.subscribe("/IoT_Grupo1/commands")
     else:
         print("Connection failed with code", rc)
 
