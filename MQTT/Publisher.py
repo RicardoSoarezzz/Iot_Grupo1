@@ -4,7 +4,7 @@ import time
 broker_address = "127.0.0.1"  # Localhost
 port = 1883  # Use the port where your broker is running
 
-client = mqtt.Client(client_id="TestPublisher")
+client = mqtt.Client(client_id="Grupo1Test")
 
 
 def on_connect(client, userdata, flags, rc):
@@ -22,7 +22,7 @@ client.loop_start()
 
 try:
     while True:
-        client.publish("test/topic", "Hello MQTT")
+        client.publish("/ic/Grupo1", "TEMP:73")
         print("Message Published")
         time.sleep(5)
 except KeyboardInterrupt:

@@ -1,7 +1,5 @@
-#include <SPI.h>
-#include <Ethernet.h>
-#include <PubSubClient.h>
 #include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -37,22 +35,29 @@ void setup() {
     lcd.init();
     lcd.backlight();
     setLCD("OK");
-
-
 }
 
 void loop() {
-
-
     float temperature = readTemperature();
     int digitalValue = digitalRead(NOISE_PIN);
 
     readButton();
     updateButtonLED(temperature);
     updateDisplayAndLED(temperature, digitalValue);
+
+    // Send data to ESP-32
+    Serial.print("TEMP:");
+    Serial.println(temperature);
+    Serial.print("NOISE:");
+    Serial.println(digitalValue);
+
+    // Check for incoming commands from ESP-32
+    if (Serial.available() > 0) {
+        String command = Serial.readStringUntil('\n');
+        handleCommand(command);
+    }
+
     delay(1000);
-
-
 }
 
 void readButton() {
@@ -69,12 +74,10 @@ void readButton() {
 }
 
 void updateButtonLED(float temp) {
-    if (buttonPressed && temperature >= TEMPERATURE_THRESHOLD_HOT) {
-        //digitalWrite(BUTTON_LED, HIGH);
+    if (buttonPressed && temp >= TEMPERATURE_THRESHOLD_HOT) {
         tone(BUZZER_PIN, 1000, 5000);
         Serial.println("BUZ-1");
     } else {
-        //digitalWrite(BUTTON_LED, LOW);
         noTone(BUZZER_PIN);
         Serial.println("BUZ-0");
     }
@@ -96,7 +99,7 @@ void updateDisplayAndLED(float temperature, int digitalValue) {
     if (digitalValue == HIGH) {
         Serial.println("NOI-1");
         setLCD("Ruido Alto");
-    } else{
+    } else {
         Serial.println("NOI-0");
     }
 }
@@ -114,6 +117,18 @@ void setLCD(String message) {
 }
 
 float readTemperature() {
-    float voltage = (float)analogRead(LM35_PIN) * 5.0 / 800.0;
-    return (voltage - 0.5) * 100.0;
+    float voltage = (float)analogRead(LM35_PIN) * 5.0 / 1023.0;
+    return voltage * 100.0;
+}
+
+void handleCommand(String command) {
+    if (command.startsWith("BUZZER_ON")) {
+        tone(BUZZER_PIN, 1000); // Turn on buzzer
+    } else if (command.startsWith("BUZZER_OFF")) {
+        noTone(BUZZER_PIN); // Turn off buzzer
+    } else if (command.startsWith("TEMP:")) {
+        // Handle any temperature-specific commands if necessary
+    } else if (command.startsWith("NOISE:")) {
+        // Handle any noise-specific commands if necessary
+    }
 }
