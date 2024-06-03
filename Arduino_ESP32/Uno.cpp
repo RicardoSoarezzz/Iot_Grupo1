@@ -1,15 +1,5 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-#include <PubSubClient.h>
-#include <Ethernet.h>
-
-// Network settings for Ethernet
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress mqtt_server(192, 168, 0, 101); // IP address of your MQTT broker
-#define mqtt_port 1883
-
-EthernetClient ethClient;
-PubSubClient client(ethClient);
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -36,67 +26,38 @@ void setup() {
     pinMode(BLUE_PIN, OUTPUT);
     pinMode(GREEN_PIN, OUTPUT);
     pinMode(BUZZER_PIN, OUTPUT);
-    pinMode(ANALOG_PIN, INPUT);
-    pinMode(NOISE_PIN, INPUT);
     pinMode(BUTTON_LED, OUTPUT);
     pinMode(BUTTON, INPUT);
+    pinMode(ANALOG_PIN, INPUT);
+    pinMode(NOISE_PIN, INPUT);
 
     lcd.begin(16, 2);
     lcd.init();
     lcd.backlight();
     setLCD("OK");
-
-    Ethernet.begin(mac);
-    client.setServer(mqtt_server, mqtt_port);
-    client.setCallback(callback);
-    
-    reconnect();
 }
 
 void loop() {
-    if (!client.connected()) {
-        reconnect();
-    }
-    client.loop();
-
-    readButton();
-    updateButtonLED();
-
     float temperature = readTemperature();
     int digitalValue = digitalRead(NOISE_PIN);
 
+    readButton();
+    updateButtonLED(temperature);
     updateDisplayAndLED(temperature, digitalValue);
+
+    // Send data to ESP-32
+    Serial.print("TEMP:");
+    Serial.println(temperature);
+    Serial.print("NOISE:");
+    Serial.println(digitalValue);
+
+    // Check for incoming commands from ESP-32
+    if (Serial.available() > 0) {
+        String command = Serial.readStringUntil('\n');
+        handleCommand(command);
+    }
+
     delay(1000);
-
-    // Send sensor data to ESP32 via MQTT
-    String sensorData = "Temperature: " + String(temperature) + " C, Noise: " + (digitalValue == HIGH ? "High" : "Low");
-    client.publish("/IoT_Grupo1", sensorData.c_str());
-}
-
-void callback(char* topic, byte* payload, unsigned int length) {
-    String message;
-    for (unsigned int i = 0; i < length; i++) {
-        message += (char)payload[i];
-    }
-
-    if (message == "BUZZER_ON") {
-        tone(BUZZER_PIN, 1000);
-    } else if (message == "BUZZER_OFF") {
-        noTone(BUZZER_PIN);
-    } else if (message == "TOGGLE_NOISE") {
-        buttonPressed = !buttonPressed;
-        updateButtonLED();
-    }
-}
-
-void reconnect() {
-    while (!client.connected()) {
-        if (client.connect("ArduinoClient")) {
-            client.subscribe("/IoT_Grupo1/commands");
-        } else {
-            delay(5000);
-        }
-    }
 }
 
 void readButton() {
@@ -104,34 +65,42 @@ void readButton() {
     if (buttonState == HIGH && !buttonPressed) {
         buttonPressed = true;
         digitalWrite(BUTTON_LED, HIGH);
+        Serial.println("RED-1");
     } else if (buttonState == LOW && buttonPressed) {
         buttonPressed = false;
         digitalWrite(BUTTON_LED, LOW);
+        Serial.println("RED-0");
     }
 }
 
-void updateButtonLED() {
-    if (buttonPressed) {
-        digitalWrite(BUTTON_LED, HIGH);
+void updateButtonLED(float temp) {
+    if (buttonPressed && temp >= TEMPERATURE_THRESHOLD_HOT) {
         tone(BUZZER_PIN, 1000, 5000);
+        Serial.println("BUZ-1");
     } else {
-        digitalWrite(BUTTON_LED, LOW);
         noTone(BUZZER_PIN);
+        Serial.println("BUZ-0");
     }
 }
 
 void updateDisplayAndLED(float temperature, int digitalValue) {
     if (temperature >= TEMPERATURE_THRESHOLD_HOT) {
         setColor(0, 0, 255); // Blue for air conditioning
+        Serial.println("LED-B");
     } else if (temperature <= TEMPERATURE_THRESHOLD_COLD) {
         setColor(255, 0, 0); // Red for heater
+        Serial.println("LED-R");
     } else {
         setLCD("OK");
         setColor(0, 255, 0); // Green for normal condition
+        Serial.println("LED-G");
     }
 
     if (digitalValue == HIGH) {
+        Serial.println("NOI-1");
         setLCD("Ruido Alto");
+    } else {
+        Serial.println("NOI-0");
     }
 }
 
@@ -148,6 +117,18 @@ void setLCD(String message) {
 }
 
 float readTemperature() {
-    float voltage = (float)analogRead(LM35_PIN) * 5.0 / 800.0;
-    return (voltage - 0.5) * 100.0;
+    float voltage = (float)analogRead(LM35_PIN) * 5.0 / 1023.0;
+    return voltage * 100.0;
+}
+
+void handleCommand(String command) {
+    if (command.startsWith("BUZZER_ON")) {
+        tone(BUZZER_PIN, 1000); // Turn on buzzer
+    } else if (command.startsWith("BUZZER_OFF")) {
+        noTone(BUZZER_PIN); // Turn off buzzer
+    } else if (command.startsWith("TEMP:")) {
+        // Handle any temperature-specific commands if necessary
+    } else if (command.startsWith("NOISE:")) {
+        // Handle any noise-specific commands if necessary
+    }
 }

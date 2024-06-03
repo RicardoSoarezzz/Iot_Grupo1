@@ -1,5 +1,5 @@
 import tkinter as tk
-import ttkbootstrap as ttk
+from tkinter import ttk
 import paho.mqtt.client as mqtt
 
 # Colors
@@ -16,55 +16,81 @@ ALARM_BG_COLOR_OFF = "gray"
 APPLICATION_NAME = "Internet das Coisas - Grupo 1"
 
 # MQTT setup
-MQTT_SERVER = "192.168.0.101"  # Replace with your MQTT server's IP address
+MQTT_SERVER = "127.0.0.1"  # Replace with your MQTT server's IP address
 MQTT_PORT = 1883
 TOPIC = "/ic/Grupo1"
 
-# Create MQTT client
+# MQTT client setup
 client = mqtt.Client()
 
+
 def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print("Connected successfully")
-        client.subscribe(TOPIC)
-    else:
-        print(f"Failed to connect, return code {rc}")
+    print("Connected with result code " + str(rc))
+    client.subscribe(TOPIC)
+
 
 def on_message(client, userdata, msg):
     print(msg.topic + " " + str(msg.payload))
+    handle_message(msg.payload.decode())
+
+
+def handle_message(message):
+    if message.startswith("TEMP:"):
+        value = int(message.split(":")[1])
+        update_thermometer(value)
+    elif message.startswith("NOISE:"):
+        state = message.split(":")[1] == "1"
+        toggle_noise(state)
+
 
 client.on_connect = on_connect
 client.on_message = on_message
 
-try:
-    client.connect(MQTT_SERVER, MQTT_PORT, 60)
-    client.loop_start()
-except Exception as e:
-    print(f"Failed to connect to MQTT server: {e}")
+client.connect(MQTT_SERVER, MQTT_PORT, 60)
+client.loop_start()
 
 # Functions
+previous_temperature = None
+previous_noise_state = False
+
+
 def update_thermometer(value):
+    global previous_temperature
     temperature_label.config(text=f"{value} °C")
-    value = int(value)
-    if value < 10:\
+    if value < 10:
         light_color = RED_LIGHT_COLOR
     elif 10 <= value <= 30:
         light_color = GREEN_LIGHT_COLOR
     else:
         light_color = BLUE_LIGHT_COLOR
     lights_canvas.itemconfig(multi_light, fill=light_color)
+
+    if previous_temperature != value:
+        client.publish(TOPIC, f"TEMP:{value}")
+        previous_temperature = value
+
+
+def send_thermometer(value):
     client.publish(TOPIC, f"TEMP:{value}")
 
-def toggle_noise():
-    global noise_state
-    noise_state = not noise_state
-    if noise_state:
+
+def toggle_noise(state=None):
+    global previous_noise_state
+    if state is None:
+        state = not previous_noise_state
+
+    if state:
         lights_canvas.itemconfig(noise_led, fill=YELLOW_LIGHT_COLOR)
-        client.publish(TOPIC, "TOGGLE_NOISE")
     else:
         lights_canvas.itemconfig(noise_led, fill="black")
 
+    if previous_noise_state != state:
+        client.publish(TOPIC, f"NOISE:{1 if state else 0}")
+        previous_noise_state = state
+
+
 blink_counter = 0
+
 
 def blink_alarm():
     global blink_counter
@@ -83,39 +109,45 @@ def blink_alarm():
         alarm_canvas.itemconfig(alarm_background, fill=ALARM_BG_COLOR_OFF)
         blink_counter = 0
 
+
 def ring_buzzer():
     blink_alarm()
     client.publish(TOPIC, "BUZZER_ON")
     root.after(5000, lambda: client.publish(TOPIC, "BUZZER_OFF"))
 
+
 # Root window setup
-root = ttk.Window(themename="yeti")
+root = tk.Tk()
 root.title(APPLICATION_NAME)
 root.geometry("800x350")
-root.iconbitmap("")  # Specify an icon file path if needed
 
 # Lights
 lights_frame = tk.Frame(root, width=400, height=120)
 lights_frame.grid(row=0, column=0, padx=10, pady=10, sticky="n")
 
-lights_canvas = ttk.Canvas(lights_frame, width=400, height=125)
+lights_canvas = tk.Canvas(lights_frame, width=400, height=125)
 lights_canvas.grid(row=0, column=0, padx=(10, 0))
 
 multi_light = lights_canvas.create_oval(50, 5, 170, 120, fill=RED_LIGHT_COLOR, outline="black", width=1)
 noise_led = lights_canvas.create_oval(230, 5, 350, 120, fill="black", outline="black", width=1)
 
 # Buttons
-buttons_frame = ttk.Frame(root, width=400, height=100)
+buttons_frame = tk.Frame(root, width=400, height=100)
 buttons_frame.grid(row=1, column=0, padx=10, pady=10, sticky="n")
 
-ttk.Button(buttons_frame, text="Ring Buzzer", command=ring_buzzer, padding=10, bootstyle="danger").grid(row=0, column=0, padx=(0, 5))
-ttk.Button(buttons_frame, text="NOISE", command=toggle_noise, padding=10, bootstyle="warning").grid(row=0, column=1, padx=(5, 0))
+tk.Button(buttons_frame, text="Ring Buzzer", command=ring_buzzer, padx=10, pady=5, bg="red", fg="white").grid(row=0,
+                                                                                                              column=0,
+                                                                                                              padx=(
+                                                                                                              0, 5))
+tk.Button(buttons_frame, text="NOISE", command=toggle_noise, padx=10, pady=5, bg="yellow", fg="black").grid(row=0,
+                                                                                                            column=1,
+                                                                                                            padx=(5, 0))
 
 # Alarm
-alarm_frame = ttk.Frame(root, width=400, height=100)
+alarm_frame = tk.Frame(root, width=400, height=100)
 alarm_frame.grid(row=2, column=0, padx=10, pady=10, sticky="n")
 
-alarm_canvas = ttk.Canvas(alarm_frame, width=400, height=100)
+alarm_canvas = tk.Canvas(alarm_frame, width=400, height=100)
 alarm_canvas.grid(row=0, column=0)
 
 alarm_background = alarm_canvas.create_rectangle(80, 20, 320, 70, fill=ALARM_BG_COLOR_OFF)
@@ -123,16 +155,16 @@ alarm_message = alarm_canvas.create_text(200, 45, text="ALARM", font=("Digital-7
 alarm_canvas.tag_lower(alarm_background, alarm_message)
 
 # Temperature
-temperature_frame = ttk.Frame(root, width=400, height=400)
+temperature_frame = tk.Frame(root, width=400, height=400)
 temperature_frame.grid(row=0, column=1, rowspan=3, padx=10, pady=10, sticky="n")
 
-thermometer_frame = ttk.Frame(temperature_frame)
+thermometer_frame = tk.Frame(temperature_frame)
 thermometer_frame.grid(row=0, column=0, pady=10)
 
-temperature_label = ttk.Label(thermometer_frame, text="25 °C", font=("Digital-7", 48), bootstyle="info", width=5)
+temperature_label = tk.Label(thermometer_frame, text="25 °C", font=("Digital-7", 48), bg="blue", fg="white", width=5)
 temperature_label.grid(row=0, column=0, pady=20)
 
-slider = tk.Scale(temperature_frame, from_=0, to=80, orient=tk.HORIZONTAL, command=update_thermometer, length=300)
+slider = tk.Scale(temperature_frame, from_=0, to=80, orient=tk.HORIZONTAL, command=send_thermometer, length=300)
 slider.grid(row=1, column=0, pady=20)
 
 noise_state = False
