@@ -16,7 +16,7 @@ ALARM_BG_COLOR_OFF = "gray"
 APPLICATION_NAME = "Internet das Coisas - Grupo 1"
 
 # MQTT setup
-MQTT_SERVER = "127.0.0.1"  # Replace with your MQTT server's IP address
+MQTT_SERVER = "192.168.0.101"  # Replace with your MQTT server's IP address
 MQTT_PORT = 1883
 TOPIC = "/ic/Grupo1"
 
@@ -36,11 +36,13 @@ def on_message(client, userdata, msg):
 
 def handle_message(message):
     if message.startswith("TEMP:"):
-        value = int(message.split(":")[1])
+        value = float(message.split(":")[1])
         update_thermometer(value)
     elif message.startswith("NOISE:"):
         state = message.split(":")[1] == "1"
         toggle_noise(state)
+    elif message== "ALARM":
+        ring_buzzer()
 
 
 client.on_connect = on_connect
@@ -66,7 +68,7 @@ def update_thermometer(value):
     lights_canvas.itemconfig(multi_light, fill=light_color)
 
     if previous_temperature != value:
-        client.publish(TOPIC, f"TEMP:{value}")
+        #client.publish(TOPIC, f"TEMP:{value}")
         previous_temperature = value
 
 

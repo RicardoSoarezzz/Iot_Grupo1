@@ -1,10 +1,11 @@
 import paho.mqtt.client as mqtt
+import random
 import time
 
-broker_address = "127.0.0.1"  # Localhost
+broker_address = "192.168.0.101"
 port = 1883  # Use the port where your broker is running
 
-client = mqtt.Client(client_id="Grupo1Test")
+client = mqtt.Client(client_id="Grupo1")
 
 
 def on_connect(client, userdata, flags, rc):
@@ -20,11 +21,21 @@ client.connect(broker_address, port)
 
 client.loop_start()
 
+
+
 try:
     while True:
-        client.publish("/ic/Grupo1", "TEMP:73")
+        temp = random.randint(1, 80)
+        client.publish("/ic/Grupo1", f"TEMP:{9.1}")
+        time.sleep(2)
+        client.publish("/ic/Grupo1", "ALARM")
+        time.sleep(2)
+        client.publish("/ic/Grupo1", "NOISE:1")
+        time.sleep(2)
+        client.publish("/ic/Grupo1", "NOISE:0")
+        time.sleep(2)
         print("Message Published")
-        time.sleep(5)
+
 except KeyboardInterrupt:
     print("Exiting")
     client.loop_stop()
