@@ -16,7 +16,7 @@ ALARM_BG_COLOR_OFF = "gray"
 APPLICATION_NAME = "Internet das Coisas - Grupo 1"
 
 # MQTT setup
-MQTT_SERVER = "192.168.0.101"  # Replace with your MQTT server's IP address
+MQTT_SERVER = "127.0.0.1"  # Replace with your MQTT server's IP address
 MQTT_PORT = 1883
 TOPIC = "/ic/Grupo1"
 
@@ -35,14 +35,17 @@ def on_message(client, userdata, msg):
 
 
 def handle_message(message):
+    global previous_alarm_state
     if message.startswith("TEMP:"):
         value = float(message.split(":")[1])
         update_thermometer(value)
     elif message.startswith("NOISE:"):
         state = message.split(":")[1] == "1"
         toggle_noise(state)
-    elif message== "ALARM":
-        ring_buzzer()
+    elif message.startswith("ALARM:"):
+        state_alarm = message.split(":")[1] == "1"
+        if previous_alarm_state != state_alarm:
+            ring_buzzer(state_alarm)
 
 
 client.on_connect = on_connect
@@ -54,6 +57,7 @@ client.loop_start()
 # Functions
 previous_temperature = None
 previous_noise_state = False
+previous_alarm_state = False
 
 
 def update_thermometer(value):
@@ -68,12 +72,22 @@ def update_thermometer(value):
     lights_canvas.itemconfig(multi_light, fill=light_color)
 
     if previous_temperature != value:
-        #client.publish(TOPIC, f"TEMP:{value}")
         previous_temperature = value
 
 
 def send_thermometer(value):
     client.publish(TOPIC, f"TEMP:{value}")
+
+
+def send_alarm(value):
+    client.publish(TOPIC, f"ALARM:{value}")
+
+
+def send_noise():
+    value = 0
+    if previous_noise_state == False:
+        value = 1
+    client.publish(TOPIC, f"NOISE:{value}")
 
 
 def toggle_noise(state=None):
@@ -91,12 +105,12 @@ def toggle_noise(state=None):
         previous_noise_state = state
 
 
-blink_counter = 0
+def ring_buzzer(state_alarm=None):
+    global previous_alarm_state
+    if state_alarm is None:
+        state_alarm = not previous_alarm_state
 
-
-def blink_alarm():
-    global blink_counter
-    if blink_counter < 6:
+    if state_alarm:
         current_color = alarm_canvas.itemcget(alarm_message, "fill")
         new_color = ALARM_TEXT_COLOR_OFF if current_color == ALARM_TEXT_COLOR_ON else ALARM_TEXT_COLOR_ON
         new_bg_color = ALARM_BG_COLOR_OFF if current_color == ALARM_TEXT_COLOR_ON else ALARM_BG_COLOR_ON
@@ -104,18 +118,17 @@ def blink_alarm():
         alarm_canvas.itemconfig(alarm_message, fill=new_color)
         alarm_canvas.itemconfig(alarm_background, fill=new_bg_color)
 
-        blink_counter += 1
-        root.after(500, blink_alarm)
+        if previous_alarm_state != state_alarm:
+            client.publish(TOPIC, "ALARM:1")
+            previous_alarm_state = state_alarm
+
     else:
         alarm_canvas.itemconfig(alarm_message, fill=ALARM_TEXT_COLOR_OFF)
         alarm_canvas.itemconfig(alarm_background, fill=ALARM_BG_COLOR_OFF)
-        blink_counter = 0
 
-
-def ring_buzzer():
-    blink_alarm()
-    client.publish(TOPIC, "BUZZER_ON")
-    root.after(5000, lambda: client.publish(TOPIC, "BUZZER_OFF"))
+        if previous_alarm_state != state_alarm:
+            client.publish(TOPIC, "ALARM:0")
+            previous_alarm_state = state_alarm
 
 
 # Root window setup
@@ -133,17 +146,18 @@ lights_canvas.grid(row=0, column=0, padx=(10, 0))
 multi_light = lights_canvas.create_oval(50, 5, 170, 120, fill=RED_LIGHT_COLOR, outline="black", width=1)
 noise_led = lights_canvas.create_oval(230, 5, 350, 120, fill="black", outline="black", width=1)
 
+
 # Buttons
 buttons_frame = tk.Frame(root, width=400, height=100)
 buttons_frame.grid(row=1, column=0, padx=10, pady=10, sticky="n")
 
-tk.Button(buttons_frame, text="Ring Buzzer", command=ring_buzzer, padx=10, pady=5, bg="red", fg="white").grid(row=0,
-                                                                                                              column=0,
-                                                                                                              padx=(
-                                                                                                              0, 5))
-tk.Button(buttons_frame, text="NOISE", command=toggle_noise, padx=10, pady=5, bg="yellow", fg="black").grid(row=0,
-                                                                                                            column=1,
-                                                                                                            padx=(5, 0))
+buzzer_button = tk.Button(buttons_frame, text="Ring Buzzer", padx=10, pady=5, bg="red", fg="white")
+buzzer_button.grid(row=0, column=0, padx=(0, 5))
+buzzer_button.bind("<ButtonPress>", lambda event: ring_buzzer(True))
+buzzer_button.bind("<ButtonRelease>", lambda event: ring_buzzer(False))
+
+tk.Button(buttons_frame, text="NOISE", command=toggle_noise, padx=10, pady=5, bg="yellow", fg="black").grid(row=0, column=1, padx=(5, 0))
+
 
 # Alarm
 alarm_frame = tk.Frame(root, width=400, height=100)

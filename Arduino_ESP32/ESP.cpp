@@ -135,7 +135,7 @@ void publishSerialData(String json) {
   Serial.println(valor ? valor : "null");
 
   // Create the payload
-  String dados = "{\"tagName\":\"" + String(tagName) + "\",\"valor\":\"" + String(valor) + "\"}";
+  String dados = String(tagName) + ":"+ String(valor);
 
   // Publish the data
   mqttClient.publish(topico, dados.c_str());

@@ -152,7 +152,7 @@ void updateButtonLED() {
     if (buttonPressed) {
         Serial.println("Sending data to ESP32");
     Serial.print("{\"topico\":");
-    Serial.print("\"/ic/Grupo1\"");  //sensor id
+    Serial.print("\"/ic/Grupo1\"");
     Serial.print(",");
     Serial.print("\"tagName\":");
     Serial.print("\"ALARM\"");
@@ -165,7 +165,7 @@ void updateButtonLED() {
     Serial.println();
 
     sw.print("{\"topico\":");
-    sw.print("\"/ic/Grupo1\"");  //sensor id
+    sw.print("\"/ic/Grupo1\"");
     sw.print(",");
     sw.print("\"tagName\":");
     sw.print("\"ALARM\"");

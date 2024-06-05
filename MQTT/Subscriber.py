@@ -1,6 +1,6 @@
 import paho.mqtt.client as mqtt
 
-broker_address = "192.168.0.101"  # Localhost
+broker_address = "127.0.0.1"  # Localhost
 port = 1883  # Use the port where your broker is running
 
 client = mqtt.Client(client_id="Grupo1Subscriber")
@@ -13,8 +13,7 @@ def on_connect(client, userdata, flags, rc):
         print("Connection failed with code", rc)
 
 def on_message(client, userdata, msg):
-    print(f"Received message: {msg.payload.decode()} on topic {msg.topic}")
-    print(msg)
+    print(msg.payload.decode())
 
 client.on_connect = on_connect
 client.on_message = on_message
