@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 import paho.mqtt.client as mqtt
-import json
 
 # Colors
 RED_LIGHT_COLOR = "red"
@@ -17,50 +16,37 @@ ALARM_BG_COLOR_OFF = "gray"
 APPLICATION_NAME = "Internet das Coisas - Grupo 1"
 
 # MQTT setup
-MQTT_SERVER = "192.168.0.101"  # Replace with your MQTT server's hostname or IP address
+MQTT_SERVER = "127.0.0.1"  # Replace with your MQTT server's IP address
 MQTT_PORT = 1883
-MQTT_USERNAME = "DuckNet"  # Replace with your MQTT username
-MQTT_PASSWORD = "DuckieUPT"  # Replace with your MQTT password
 TOPIC = "/ic/Grupo1"
-TOPIC_INTERFACE = "ic/Grupo1Interface"
 
 # MQTT client setup
 client = mqtt.Client()
-client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code " + str(rc))
     client.subscribe(TOPIC)
 
+
 def on_message(client, userdata, msg):
     print(msg.topic + " " + str(msg.payload))
     handle_message(msg.payload.decode())
 
+
 def handle_message(message):
     global previous_alarm_state
-    try:
-        msg = json.loads(message)
-        topico = msg.get("topico")
-        tagName = msg.get("tagName")
-        valor = msg.get("valor")
-    except json.JSONDecodeError:
-        # Fallback to simple key-value pair parsing
-        parts = message.split(":")
-        if len(parts) == 2:
-            tagName = parts[0]
-            valor = parts[1]
-            topico = TOPIC
-        else:
-            print(f"Failed to parse message: {message}")
-            return
+    if message.startswith("TEMP:"):
+        value = float(message.split(":")[1])
+        update_thermometer(value)
+    elif message.startswith("NOISE:"):
+        state = message.split(":")[1] == "1"
+        toggle_noise(state)
+    elif message.startswith("ALARM:"):
+        state_alarm = message.split(":")[1] == "1"
+        if previous_alarm_state != state_alarm:
+            ring_buzzer(state_alarm)
 
-    if topico == TOPIC:
-        if tagName == "TEMP":
-            update_thermometer(float(valor))
-        elif tagName == "NOISE":
-            toggle_noise(int(float(valor)) == 1)
-        elif tagName == "ALARM":
-            ring_buzzer(int(float(valor)) == 1)
 
 client.on_connect = on_connect
 client.on_message = on_message
@@ -73,11 +59,10 @@ previous_temperature = None
 previous_noise_state = False
 previous_alarm_state = False
 
+
 def update_thermometer(value):
     global previous_temperature
     temperature_label.config(text=f"{value} °C")
-    slider.set(value)  # Update the slider value
-
     if value < 10:
         light_color = RED_LIGHT_COLOR
     elif 10 <= value <= 30:
@@ -89,35 +74,21 @@ def update_thermometer(value):
     if previous_temperature != value:
         previous_temperature = value
 
+
 def send_thermometer(value):
-    msg = {
-        "topico": TOPIC_INTERFACE,
-        "tagName": "TEMP",
-        "valor": str(value)
-    }
-    print("Publish: ",TOPIC, json.dumps(msg))
-    client.publish(TOPIC_INTERFACE, json.dumps(msg))
+    client.publish(TOPIC, f"TEMP:{value}")
+
 
 def send_alarm(value):
-    msg = {
-        "topico": TOPIC_INTERFACE,
-        "tagName": "ALARM",
-        "valor": str(value)
-    }
-    print("Publish: ",TOPIC, json.dumps(msg))
-    client.publish(TOPIC_INTERFACE, json.dumps(msg))
+    client.publish(TOPIC, f"ALARM:{value}")
+
 
 def send_noise():
     value = 0
     if previous_noise_state == False:
         value = 1
-    msg = {
-        "topico": TOPIC_INTERFACE,
-        "tagName": "NOISE",
-        "valor": str(value)
-    }
-    print("Publish: ",TOPIC, json.dumps(msg))
-    client.publish(TOPIC_INTERFACE, json.dumps(msg))
+    client.publish(TOPIC, f"NOISE:{value}")
+
 
 def toggle_noise(state=None):
     global previous_noise_state
@@ -130,12 +101,9 @@ def toggle_noise(state=None):
         lights_canvas.itemconfig(noise_led, fill="black")
 
     if previous_noise_state != state:
-        msg = {
-            "topico": TOPIC,
-            "tagName": "NOISE",
-            "valor": "1" if state else "0"
-        }
+        client.publish(TOPIC, f"NOISE:{1 if state else 0}")
         previous_noise_state = state
+
 
 def ring_buzzer(state_alarm=None):
     global previous_alarm_state
@@ -146,16 +114,12 @@ def ring_buzzer(state_alarm=None):
         current_color = alarm_canvas.itemcget(alarm_message, "fill")
         new_color = ALARM_TEXT_COLOR_OFF if current_color == ALARM_TEXT_COLOR_ON else ALARM_TEXT_COLOR_ON
         new_bg_color = ALARM_BG_COLOR_OFF if current_color == ALARM_TEXT_COLOR_ON else ALARM_BG_COLOR_ON
+
         alarm_canvas.itemconfig(alarm_message, fill=new_color)
         alarm_canvas.itemconfig(alarm_background, fill=new_bg_color)
 
         if previous_alarm_state != state_alarm:
-            msg = {
-                "topico": TOPIC,
-                "tagName": "ALARM",
-                "valor": "1"
-            }
-
+            client.publish(TOPIC, "ALARM:1")
             previous_alarm_state = state_alarm
 
     else:
@@ -163,12 +127,9 @@ def ring_buzzer(state_alarm=None):
         alarm_canvas.itemconfig(alarm_background, fill=ALARM_BG_COLOR_OFF)
 
         if previous_alarm_state != state_alarm:
-            msg = {
-                "topico": TOPIC,
-                "tagName": "ALARM",
-                "valor": "0"
-            }
+            client.publish(TOPIC, "ALARM:0")
             previous_alarm_state = state_alarm
+
 
 # Root window setup
 root = tk.Tk()
@@ -185,16 +146,18 @@ lights_canvas.grid(row=0, column=0, padx=(10, 0))
 multi_light = lights_canvas.create_oval(50, 5, 170, 120, fill=RED_LIGHT_COLOR, outline="black", width=1)
 noise_led = lights_canvas.create_oval(230, 5, 350, 120, fill="black", outline="black", width=1)
 
+
 # Buttons
 buttons_frame = tk.Frame(root, width=400, height=100)
 buttons_frame.grid(row=1, column=0, padx=10, pady=10, sticky="n")
 
 buzzer_button = tk.Button(buttons_frame, text="Ring Buzzer", padx=10, pady=5, bg="red", fg="white")
 buzzer_button.grid(row=0, column=0, padx=(0, 5))
-buzzer_button.bind("<ButtonPress>", lambda event: send_alarm(1))
-buzzer_button.bind("<ButtonRelease>", lambda event: send_alarm(0))
+buzzer_button.bind("<ButtonPress>", lambda event: ring_buzzer(True))
+buzzer_button.bind("<ButtonRelease>", lambda event: ring_buzzer(False))
 
-tk.Button(buttons_frame, text="NOISE", command=send_noise, padx=10, pady=5, bg="yellow", fg="black").grid(row=0, column=1, padx=(5, 0))
+tk.Button(buttons_frame, text="NOISE", command=toggle_noise, padx=10, pady=5, bg="yellow", fg="black").grid(row=0, column=1, padx=(5, 0))
+
 
 # Alarm
 alarm_frame = tk.Frame(root, width=400, height=100)

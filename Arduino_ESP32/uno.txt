@@ -67,9 +67,9 @@ void loop() {
         lastNoise = noiseONOFF;
     }
 
-    if ((buttonPressed ? 1 : 0) != lastAlarmState) {
+    if (buttonPressed != lastAlarmState) {
         sendData("ALARM", buttonPressed ? 1 : 0);
-        lastAlarmState = buttonPressed ? 1 : 0;
+        lastAlarmState = buttonPressed;
     }
 
     delay(1000);
@@ -81,15 +81,21 @@ void readButton() {
         buttonPressed = true;
     } else if (buttonState == LOW && buttonPressed) {
         buttonPressed = false;
+        digitalWrite(BUTTON_LED, LOW);
     }
 }
 
 void updateButtonLED() {
     if (buttonPressed) {
-        digitalWrite(BUTTON_LED, HIGH);
-        tone(BUZZER_PIN, 1000);
+        for (int i = 0; i < 3; i++) {
+            digitalWrite(BUTTON_LED, HIGH);
+            tone(BUZZER_PIN, 1000);
+            delay(500);
+            digitalWrite(BUTTON_LED, LOW);
+            noTone(BUZZER_PIN);
+            delay(500);
+        }
     } else {
-        digitalWrite(BUTTON_LED, LOW);
         noTone(BUZZER_PIN);
     }
 }
@@ -122,7 +128,7 @@ void setLCD(String message) {
 }
 
 float readTemperature() {
-    float voltage = (float)analogRead(LM35_PIN) / 500;
+    float voltage = (float)analogRead(LM35_PIN) / 1000;
     return voltage * 100.0;
 }
 

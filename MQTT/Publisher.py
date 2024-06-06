@@ -27,15 +27,15 @@ try:
     while True:
         temp = random.randint(1, 80)
         client.publish("/ic/Grupo1", f"TEMP:{temp}")
-        time.sleep(2)
+        time.sleep(0.5)
         client.publish("/ic/Grupo1", "ALARM:1")
-        time.sleep(2)
+        time.sleep(0.5)
         client.publish("/ic/Grupo1", "NOISE:1")
-        time.sleep(2)
+        time.sleep(0.5)
         client.publish("/ic/Grupo1", "NOISE:0")
-        time.sleep(2)
+        time.sleep(0.5)
         client.publish("/ic/Grupo1", "ALARM:0")
-        time.sleep(2)
+        time.sleep(0.5)
         print("Message Published")
 
 except KeyboardInterrupt:
