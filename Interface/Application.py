@@ -117,6 +117,7 @@ def send_noise():
         "valor": str(value)
     }
     print("Publish: ",TOPIC, json.dumps(msg))
+    
     client.publish(TOPIC_INTERFACE, json.dumps(msg))
 
 def toggle_noise(state=None):
