@@ -17,10 +17,10 @@ ALARM_BG_COLOR_OFF = "gray"
 APPLICATION_NAME = "Internet das Coisas - Grupo 1"
 
 # MQTT setup
-MQTT_SERVER = "192.168.0.101"  # Replace with your MQTT server's hostname or IP address
+MQTT_SERVER = "192.168.0.101"  
 MQTT_PORT = 1883
-MQTT_USERNAME = "DuckNet"  # Replace with your MQTT username
-MQTT_PASSWORD = "DuckieUPT"  # Replace with your MQTT password
+MQTT_USERNAME = "DuckNet" 
+MQTT_PASSWORD = "DuckieUPT"  
 TOPIC = "/ic/Grupo1"
 TOPIC_INTERFACE = "ic/Grupo1Interface"
 
@@ -44,7 +44,6 @@ def handle_message(message):
         tagName = msg.get("tagName")
         valor = msg.get("valor")
     except json.JSONDecodeError:
-        # Fallback to simple key-value pair parsing
         parts = message.split(":")
         if len(parts) == 2:
             tagName = parts[0]
@@ -76,7 +75,7 @@ previous_alarm_state = False
 def update_thermometer(value):
     global previous_temperature
     temperature_label.config(text=f"{value} °C")
-    slider.set(value)  # Update the slider value
+    slider.set(value)  
 
     if value < 10:
         light_color = RED_LIGHT_COLOR
@@ -95,8 +94,9 @@ def send_thermometer(value):
         "tagName": "TEMP",
         "valor": str(value)
     }
-    print("Publish: ",TOPIC, json.dumps(msg))
+    print("Publish: ", TOPIC, json.dumps(msg))
     client.publish(TOPIC_INTERFACE, json.dumps(msg))
+
 
 def send_alarm(value):
     msg = {
@@ -104,7 +104,7 @@ def send_alarm(value):
         "tagName": "ALARM",
         "valor": str(value)
     }
-    print("Publish: ",TOPIC, json.dumps(msg))
+    print("Publish: ", TOPIC, json.dumps(msg))
     client.publish(TOPIC_INTERFACE, json.dumps(msg))
 
 def send_noise():
@@ -116,9 +116,9 @@ def send_noise():
         "tagName": "NOISE",
         "valor": str(value)
     }
-    print("Publish: ",TOPIC, json.dumps(msg))
-    
+    print("Publish: ", TOPIC, json.dumps(msg))
     client.publish(TOPIC_INTERFACE, json.dumps(msg))
+
 
 def toggle_noise(state=None):
     global previous_noise_state

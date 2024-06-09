@@ -68,6 +68,13 @@ void setup() {
 
     setup_wifi();
     mqttClient.setServer(mqtt_server, mqtt_port);
+
+
+    /*
+        callback, nao temos certeza que funciona a 100%
+        comunicação arduino-->interface funcional
+        comunicação interface-->Arduino ?
+    */
     //mqttClient.setCallback(callback);
     reconnect();
 }
@@ -98,36 +105,27 @@ void publishSerialData(String json) {
         reconnect();
     }
 
-    // Print the raw JSON string for debugging
     Serial.print("Raw JSON: ");
     Serial.println(json);
 
-    // Create a StaticJsonDocument with enough capacity
     StaticJsonDocument<200> doc;
 
-    // Deserialize the JSON string
     DeserializationError error = deserializeJson(doc, json);
 
-    // Check if deserialization failed
     if (error) {
         return;
     }
 
-    // Extract values from the JSON object
     const char* topico = doc["topico"];
     const char* tagName = doc["tagName"];
     int valor = doc["valor"];
 
-    // Add ESP32 identifier to the JSON object
     doc["esp_id"] = esp_id;
 
-    // Create the payload
     String dados = String(tagName) + ":" + valor; // TEMP:x | NOISE:1/0 | ALARM:1/0
 
-    // Publish the data
     mqttClient.publish(topico, dados.c_str());
 
-    // Debug output for published message
     Serial.print("Publish : ");
     Serial.print(topico);
     Serial.print(" : ");
@@ -144,24 +142,23 @@ void callback(char* topic, byte* payload, unsigned int length) {
     }
     Serial.println(st);
 
-    // Deserialize the payload
     StaticJsonDocument<200> doc;
     DeserializationError error = deserializeJson(doc, st);
 
-    // Check if deserialization failed
     if (error) {
+        Serial.println("Deserialization failed");
         return;
     }
 
-    // Check if the message is from this ESP32
     const char* received_esp_id = doc["esp_id"];
     if (received_esp_id && strcmp(received_esp_id, esp_id) == 0) {
         Serial.println("Ignoring message from this ESP32");
-        return; // Ignore the message
+        return; 
     }
 
     sw.println(st);
 }
+
 
 String getAtrib(String json, String atrib) {
     char sep = ',';

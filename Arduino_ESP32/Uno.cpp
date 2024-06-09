@@ -57,7 +57,7 @@ void loop() {
     updateDisplayAndLED(temperature, digitalValue);
 
     // Send data to ESP-32 if there are significant changes
-    if (abs(temperature - lastTemperature) > 5) {
+    if (abs(temperature - lastTemperature) > 3) {
         sendData("TEMP", temperature);
         lastTemperature = temperature;
     }
@@ -72,8 +72,45 @@ void loop() {
         lastAlarmState = buttonPressed ? 1 : 0;
     }
 
+    /*
+ 
+        nao temos certeza que funciona a 100%
+        comunicação arduino-->interface funcional
+        comunicação interface-->Arduino ?
+    // Read from Serial
+    if (sw.available()) {
+        String message = sw.readStringUntil('\n');
+        handleSerialMessage(message);
+    }
+    */
+
     delay(1000);
 }
+
+void handleSerialMessage(String message) {
+    
+    StaticJsonDocument<200> doc;
+    DeserializationError error = deserializeJson(doc, message);
+
+    if (error) {
+        Serial.println("Deserialization failed");
+        return;
+    }
+
+    const char* tagName = doc["tagName"];
+    const char* valorStr = doc["valor"];
+    float valor = atof(valorStr);
+
+    if (strcmp(tagName, "TEMP") == 0) {
+        update_thermometer(valor);
+    } else if (strcmp(tagName, "NOISE") == 0) {
+        toggle_noise((int)valor == 1);
+    } else if (strcmp(tagName, "ALARM") == 0) {
+        ring_buzzer((int)valor == 1);
+    }
+}
+
+
 
 void readButton() {
     buttonState = digitalRead(BUTTON);
@@ -147,7 +184,7 @@ String getAtrib(String json, String atrib) {
     int fim = -1;
     int maxIndex = json.length() - 1;
 
-    json = json.substring(1, json.length() - 2); // tira chavetas
+    json = json.substring(1, json.length() - 2); 
 
     for (int i = 0; i <= maxIndex; i++) {
         if (json.charAt(i) == sep || i == maxIndex) {
@@ -157,7 +194,7 @@ String getAtrib(String json, String atrib) {
             int posdp = a.indexOf(":");
             if (posdp < 0)
                 continue;
-            String nomeAtrib = a.substring(1, posdp - 1); // filtra "
+            String nomeAtrib = a.substring(1, posdp - 1); 
             String valorAtrib = a.substring(posdp + 1);
             if (nomeAtrib.equals(atrib))
                 return tiraAspas(valorAtrib);
