@@ -3,7 +3,6 @@
 #include <HardwareSerial.h>
 #include <ArduinoJson.h>
 
-// WiFi and MQTT configuration
 const char* ssid = "DuckNet";
 const char* password = "DuckieUPT";
 const char* mqtt_server = "192.168.0.101";
@@ -11,8 +10,6 @@ const char* mqtt_server = "192.168.0.101";
 #define TOPIC "/ic/Grupo1"
 #define TOPIC_INTERFACE "/ic/Grupo1Interface"
 
-
-// Define Serial1 RX and TX pins
 #define rxPin 16
 #define txPin 17
 
@@ -21,7 +18,6 @@ HardwareSerial sw(2);
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
-// Unique identifier for this ESP32
 const char* esp_id = "ESP32_1";
 
 void setup_wifi() {
@@ -47,9 +43,7 @@ void reconnect() {
         snprintf(clientId, sizeof(clientId), "Grupo1_RM_%s", esp_id);
         if (mqttClient.connect(clientId)) {
             Serial.println("MQTT Connected Successfully");
-            boolean res = mqttClient.subscribe(TOPIC);
-            Serial.print(TOPIC_INTERFACE);
-            Serial.println(res ? "  true" : "  false");
+            mqttClient.subscribe(TOPIC);
         } else {
             Serial.print("Connection failed, rc=");
             Serial.print(mqttClient.state());
@@ -64,12 +58,10 @@ void setup() {
     pinMode(txPin, OUTPUT);
 
     Serial.begin(115200);
-    sw.begin(19200, SERIAL_8N1, 16, 17);
+    sw.begin(19200, SERIAL_8N1, rxPin, txPin);
 
     setup_wifi();
     mqttClient.setServer(mqtt_server, mqtt_port);
-
-
     mqttClient.setCallback(callback);
     reconnect();
 }
@@ -86,7 +78,14 @@ void loop() {
     delay(200);
 }
 
-// Function to publish serial data
+String tiraAspas(String s) {
+    if (s.charAt(0) == '"')
+        s = s.substring(1);
+    if (s.charAt(s.length() - 1) == '"')
+        s = s.substring(0, s.length() - 1);
+    return s;
+}
+
 void publishSerialData(String json) {
     if (!mqttClient.connected()) {
         reconnect();
@@ -109,7 +108,7 @@ void publishSerialData(String json) {
 
     doc["esp_id"] = esp_id;
 
-    String dados = String(tagName) + ":" + valor; // TEMP:x | NOISE:1/0 | ALARM:1/0
+    String dados = String(tagName) + ":" + valor;
 
     mqttClient.publish(topico, dados.c_str());
 
@@ -127,21 +126,23 @@ void callback(char* topic, byte* payload, unsigned int length) {
     for (unsigned int i = 0; i < length; i++) {
         st += (char)payload[i];
     }
+    st.trim();
     Serial.println(st);
 
     StaticJsonDocument<200> doc;
+
     DeserializationError error = deserializeJson(doc, st);
 
     if (error) {
-        Serial.println("Deserialization failed");
+        Serial.print("deserializeJson() failed: ");
+        Serial.println(error.f_str());
         return;
     }
 
-    const char* received_esp_id = doc["esp_id"];
-    if (received_esp_id && strcmp(received_esp_id, esp_id) == 0) {
-        Serial.println("Ignoring message from this ESP32");
-        return; 
-    }
+    const char* topico = doc["topico"];
+    const char* tagName = doc["tagName"];
+    int valor = doc["valor"];
 
-    sw.println(st);
+    String message = "{\"topico\":\"" + String(topico) + "\",\"tagName\":\"" + String(tagName) + "\",\"valor\":" + String(valor) + "}";
+    sw.println(message);
 }

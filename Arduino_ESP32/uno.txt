@@ -57,7 +57,7 @@ void loop() {
     updateDisplayAndLED(temperature, digitalValue);
 
     // Send data to ESP-32 if there are significant changes
-    if (abs(temperature - lastTemperature) > 5) {
+    if (abs(temperature - lastTemperature) > 3) {
         sendData("TEMP", temperature);
         lastTemperature = temperature;
     }
@@ -67,13 +67,45 @@ void loop() {
         lastNoise = noiseONOFF;
     }
 
-    if (buttonPressed != lastAlarmState) {
+    if ((buttonPressed ? 1 : 0) != lastAlarmState) {
         sendData("ALARM", buttonPressed ? 1 : 0);
-        lastAlarmState = buttonPressed;
+        lastAlarmState = buttonPressed ? 1 : 0;
     }
+
+    
+ /*
+        nao temos certeza que funciona a 100%
+        comunicação arduino-->interface funcional
+        comunicação interface-->Arduino ?
+    */
+    // Read from Serial
+    if (sw.available()) {
+        String message = sw.readStringUntil('\n');
+        handleSerialMessage(message);
+    }
+    
 
     delay(1000);
 }
+
+void handleSerialMessage(String message) {
+    
+
+    const char* tagName = doc["tagName"];
+    const char* valorStr = doc["valor"];
+    float valor = atof(valorStr);
+
+    if (strcmp(tagName, "TEMP") == 0) {
+  
+    } else if (strcmp(tagName, "NOISE") == 0) {
+       
+    } else if (strcmp(tagName, "ALARM") == 0) {
+        buttonPressed = true;
+        updateButtonLED();
+    }
+}
+
+
 
 void readButton() {
     buttonState = digitalRead(BUTTON);
@@ -81,21 +113,15 @@ void readButton() {
         buttonPressed = true;
     } else if (buttonState == LOW && buttonPressed) {
         buttonPressed = false;
-        digitalWrite(BUTTON_LED, LOW);
     }
 }
 
 void updateButtonLED() {
     if (buttonPressed) {
-        for (int i = 0; i < 3; i++) {
-            digitalWrite(BUTTON_LED, HIGH);
-            tone(BUZZER_PIN, 1000);
-            delay(500);
-            digitalWrite(BUTTON_LED, LOW);
-            noTone(BUZZER_PIN);
-            delay(500);
-        }
+        digitalWrite(BUTTON_LED, HIGH);
+        tone(BUZZER_PIN, 1000);
     } else {
+        digitalWrite(BUTTON_LED, LOW);
         noTone(BUZZER_PIN);
     }
 }
@@ -128,7 +154,7 @@ void setLCD(String message) {
 }
 
 float readTemperature() {
-    float voltage = (float)analogRead(LM35_PIN) / 1000;
+    float voltage = (float)analogRead(LM35_PIN) / 500;
     return voltage * 100.0;
 }
 
@@ -153,7 +179,7 @@ String getAtrib(String json, String atrib) {
     int fim = -1;
     int maxIndex = json.length() - 1;
 
-    json = json.substring(1, json.length() - 2); // tira chavetas
+    json = json.substring(1, json.length() - 2); 
 
     for (int i = 0; i <= maxIndex; i++) {
         if (json.charAt(i) == sep || i == maxIndex) {
@@ -163,11 +189,12 @@ String getAtrib(String json, String atrib) {
             int posdp = a.indexOf(":");
             if (posdp < 0)
                 continue;
-            String nomeAtrib = a.substring(1, posdp - 1); // filtra "
+            String nomeAtrib = a.substring(1, posdp - 1); 
             String valorAtrib = a.substring(posdp + 1);
             if (nomeAtrib.equals(atrib))
                 return tiraAspas(valorAtrib);
         }
+        
     }
     return "";
 }

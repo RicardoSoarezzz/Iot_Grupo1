@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <SoftwareSerial.h>
+#include <ArduinoJson.h>
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -72,45 +73,34 @@ void loop() {
         lastAlarmState = buttonPressed ? 1 : 0;
     }
 
-    /*
- 
-        nao temos certeza que funciona a 100%
-        comunicação arduino-->interface funcional
-        comunicação interface-->Arduino ?
+  
     // Read from Serial
-    if (sw.available()) {
-        String message = sw.readStringUntil('\n');
-        handleSerialMessage(message);
+       if (sw.available() > 0) {
+        char bfr[501];
+        memset(bfr, 0, 501);
+        sw.readBytesUntil('\n', bfr, 500);
+        String b = String(bfr);
+        handleSerialMessage(b);
     }
-    */
+    
 
-    delay(1000);
+    delay(100);
 }
 
 void handleSerialMessage(String message) {
-    
     StaticJsonDocument<200> doc;
-    DeserializationError error = deserializeJson(doc, message);
 
-    if (error) {
-        Serial.println("Deserialization failed");
-        return;
-    }
-
+    const char* topico = doc["topico"];
     const char* tagName = doc["tagName"];
-    const char* valorStr = doc["valor"];
-    float valor = atof(valorStr);
+    int valor = doc["valor"];
 
-    if (strcmp(tagName, "TEMP") == 0) {
-        update_thermometer(valor);
-    } else if (strcmp(tagName, "NOISE") == 0) {
-        toggle_noise((int)valor == 1);
-    } else if (strcmp(tagName, "ALARM") == 0) {
-        ring_buzzer((int)valor == 1);
+    if( tagName == "ALARM" && valor==1){
+        digitalWrite(BUTTON_LED, LOW);
+        noTone(BUZZER_PIN);
     }
+
+    
 }
-
-
 
 void readButton() {
     buttonState = digitalRead(BUTTON);
@@ -170,36 +160,3 @@ void sendData(String tagName, float value) {
     sw.println(data);
 }
 
-String tiraAspas(String s) {
-    if (s.charAt(0) == '"')
-        s = s.substring(1);
-    if (s.charAt(s.length() - 1) == '"')
-        s = s.substring(0, s.length() - 1);
-    return s;
-}
-
-String getAtrib(String json, String atrib) {
-    char sep = ',';
-    int inicio = 1;
-    int fim = -1;
-    int maxIndex = json.length() - 1;
-
-    json = json.substring(1, json.length() - 2); 
-
-    for (int i = 0; i <= maxIndex; i++) {
-        if (json.charAt(i) == sep || i == maxIndex) {
-            inicio = fim + 1;
-            fim = (i == maxIndex) ? i + 1 : i;
-            String a = json.substring(inicio, fim);
-            int posdp = a.indexOf(":");
-            if (posdp < 0)
-                continue;
-            String nomeAtrib = a.substring(1, posdp - 1); 
-            String valorAtrib = a.substring(posdp + 1);
-            if (nomeAtrib.equals(atrib))
-                return tiraAspas(valorAtrib);
-        }
-        
-    }
-    return "";
-}

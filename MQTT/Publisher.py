@@ -25,8 +25,8 @@ client.loop_start()
 
 try:
     while True:
-        temp = random.randint(1, 80)
-        client.publish("/ic/Grupo1", f"TEMP:{temp}")
+        temp = random.randint(0, 40)
+        client.publish("/ic/Grupo3/Alarm")
         time.sleep(0.5)
         client.publish("/ic/Grupo1", "ALARM:1")
         time.sleep(0.5)
